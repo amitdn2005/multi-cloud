@@ -120,19 +120,9 @@ func (s *APIService) GetBackend(request *restful.Request, response *restful.Resp
 	ctx := common.InitCtxWithAuthInfo(request)
 	res, err := s.backendClient.GetBackend(ctx, &backend.GetBackendRequest{Id: id})
 	
-	if (res != nil) {
-		log.Infof("AMIT: response  String %s", res.String())	
-		if (res.Backend != nil && res.Backend.Id != "") {
-			log.Infof("AMIT: response  String %s", res.Backend.Id)
-			log.Infof("AMIT: response  String %s", res.Backend.String())
-	
-		}
-	}
-	log.Infof("AMIT: Check1")
-		
 	if err != nil {
 		if (res == nil && strings.Contains(err.Error(), "invalid input to ObjectIdHex"))  {			
-			log.Errorf("failed to get backend details: %v\n", err)
+			log.Errorf("failed to get backend details: %v %s\n", err, err.Error())
 			errMsg := fmt.Sprintf("Invalid backend name: %s", id)
 			response.WriteError(http.StatusNotFound, errors.New(errMsg))
 		} else {
@@ -339,10 +329,15 @@ func (s *APIService) UpdateBackend(request *restful.Request, response *restful.R
 	ctx := common.InitCtxWithAuthInfo(request)
 	res, err := s.backendClient.UpdateBackend(ctx, &updateBackendRequest)
 	if err != nil {
-		log.Errorf("failed to update backend: %v\n", err)
-		response.WriteError(http.StatusInternalServerError, err)
+		if (res == nil && strings.Contains(err.Error(), "invalid input to ObjectIdHex"))  {			
+			log.Errorf("failed to get backend details: %v %s\n", err, err.Error())
+			errMsg := fmt.Sprintf("Invalid backend name: %s", request.PathParameter("id"))
+			response.WriteError(http.StatusNotFound, errors.New(errMsg))
+		} else {
+			response.WriteError(http.StatusInternalServerError, err)
+		}
 		return
-	}
+	}	
 
 	log.Info("Update backend successfully.")
 	response.WriteEntity(res.Backend)
@@ -358,10 +353,15 @@ func (s *APIService) DeleteBackend(request *restful.Request, response *restful.R
 	ctx := common.InitCtxWithAuthInfo(request)
 	result, err := s.backendClient.GetBackend(ctx, &backend.GetBackendRequest{Id: id})
 	if err != nil {
-		log.Errorf("failed to get backend details: %v\n", err)
-		response.WriteError(http.StatusInternalServerError, err)
+		if (result == nil && strings.Contains(err.Error(), "invalid input to ObjectIdHex"))  {			
+			log.Errorf("failed to get backend details: %v %s\n", err, err.Error())
+			errMsg := fmt.Sprintf("Invalid backend name: %s", request.PathParameter("id"))
+			response.WriteError(http.StatusNotFound, errors.New(errMsg))
+		} else {
+			response.WriteError(http.StatusInternalServerError, err)
+		}
 		return
-	}
+	}	
 	backendname := result.Backend.Name
 	res, err := s.s3Client.ListBuckets(ctx, &s3.ListBucketsRequest{Filter: map[string]string{"location": backendname}})
 	if err != nil {
