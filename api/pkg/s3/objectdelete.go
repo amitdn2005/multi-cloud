@@ -30,9 +30,13 @@ func (s *APIService) ObjectDelete(request *restful.Request, response *restful.Re
 	bucketName := request.PathParameter("bucketName")
 	objectName := request.PathParameter("objectKey")
 	version := url.Query().Get("versionId")
+	u, err := url.Parse(objectName)
+	objectName = u.EscapedPath()
+
 	if strings.HasSuffix(url.String(), "/") { // This is for folder.
 		objectName = objectName + "/"
 	}
+	log.Infof("AMIT: delete object[%s] from bucket[%s] ", objectName, bucketName)
 
 	if len(bucketName) == 0 {
 		log.Errorf("invalid input, bucket=%s\n", bucketName)
