@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/emicklei/go-restful"
 	"github.com/micro/go-micro/v2/client"
@@ -130,7 +131,7 @@ func (s *APIService) GetBackend(request *restful.Request, response *restful.Resp
 	log.Infof("AMIT: Check1")
 		
 	if err != nil {
-		if (res == nil)  {			
+		if (res == nil && strings.Contains(err.Error(), "invalid input to ObjectIdHex"))  {			
 			log.Errorf("failed to get backend details: %v\n", err)
 			errMsg := fmt.Sprintf("Invalid backend name: %s", id)
 			response.WriteError(http.StatusNotFound, errors.New(errMsg))
