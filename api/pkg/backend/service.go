@@ -118,9 +118,11 @@ func (s *APIService) GetBackend(request *restful.Request, response *restful.Resp
 
 	ctx := common.InitCtxWithAuthInfo(request)
 	res, err := s.backendClient.GetBackend(ctx, &backend.GetBackendRequest{Id: id})
+	log.Infof("AMIT: response  String %s", res.String())
+	log.Infof("AMIT: response  Backend Id %s", res.Backend.Id)
 	if err != nil {
-		log.Infof("AMIT: response  String %s", res.String())
-		log.Infof("AMIT: response  Backend Id %s", res.Backend.Id)
+		log.Infof("AMIT: In Error response  String %s", res.String())
+		log.Infof("AMIT: In error response  Backend Id %s", res.Backend.Id)
 		log.Errorf("failed to get backend details: %v\n", err)
 		// response.WriteError(http.StatusInternalServerError, err)
 		response.WriteError(http.StatusNotFound, errors.New("Backend name does not exist"))
