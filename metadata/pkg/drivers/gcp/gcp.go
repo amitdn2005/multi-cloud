@@ -28,9 +28,44 @@ type GcpAdapter struct {
 	session *s3client.Client
 }
 
+func BucketList(sess *session.Session) ([]*model.MetaBucket, error) {
+	svc := s3.New(sess)
+
+	output, err := svc.ListBuckets(&s3.ListBucketsInput{})
+	if err != nil {
+		log.Errorf("unable to list buckets. failed with error: %v", err)
+		return nil, err
+	}
+	numBuckets := len(output.Buckets)
+	log.Info("Amit: GCP ===========")
+	log.Info(output.Buckets)
+	bucketArray := make([]*model.MetaBucket, numBuckets)
+	wg := sync.WaitGroup{}
+	for i, bucket := range output.Buckets {
+		wg.Add(1)
+		// go GetBucketMeta(i, bucket, sess, bucketArray, &wg)
+	}
+	wg.Wait()
+	return bucketArray, err
+}
+
 func (ad *GcpAdapter) SyncMetadata(ctx context.Context, in *pb.SyncMetadataRequest) error {
-	log.Infoln("Implement me (gcp) driver")
-	return nil
+	buckArr, err := BucketList(ad.Session)
+	if err != nil {
+		log.Errorf("metadata collection for backend id: %v failed with error: %v", ad.Backend.Id, err)
+		return err
+	}
+
+	metaBackend := model.MetaBackend{}
+	metaBackend.Id = bson.ObjectId(ad.Backend.Id)
+	metaBackend.BackendName = ad.Backend.Name
+	metaBackend.Type = ad.Backend.Type
+	metaBackend.Region = ad.Backend.Region
+	metaBackend.Buckets = buckArr
+	newContext := context.TODO()
+	err = db.DbAdapter.CreateMetadata(newContext, metaBackend)
+
+	return err
 }
 func (ad *GcpAdapter) DownloadObject() {
 	log.Info("Implement me (gcp) driver")
