@@ -16,20 +16,37 @@ package gcp
 
 import (
 	"context"
+	"sync"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/service/s3"
+	awss3 "github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/aws/session"
 	backendpb "github.com/opensds/multi-cloud/backend/proto"
+	"github.com/opensds/multi-cloud/metadata/pkg/db"
+	"github.com/opensds/multi-cloud/metadata/pkg/model"
 	pb "github.com/opensds/multi-cloud/metadata/proto"
 	log "github.com/sirupsen/logrus"
 	"github.com/webrtcn/s3client"
 )
 
 type GcpAdapter struct {
-	backend *backendpb.BackendDetail
-	session *s3client.Client
+	Backend *backendpb.BackendDetail
+	Session *s3client.Client
 }
 
-func BucketList(sess *session.Session) ([]*model.MetaBucket, error) {
-	svc := s3.New(sess)
+func (ad *GcpAdapter) BucketList(sess *s3client.Client) ([]*model.MetaBucket, error) {
+	Region := aws.String(ad.Backend.Region)
+	Endpoint := aws.String(ad.Backend.Endpoint)
+	Credentials := credentials.NewStaticCredentials(ad.Backend.Access, ad.Backend.Security, "")
+	configuration := &aws.Config{
+		Region:      Region,
+		Endpoint:    Endpoint,
+		Credentials: Credentials,
+	}
+
+	svc := awss3.New(session.New(configuration))
 
 	output, err := svc.ListBuckets(&s3.ListBucketsInput{})
 	if err != nil {
@@ -42,6 +59,7 @@ func BucketList(sess *session.Session) ([]*model.MetaBucket, error) {
 	bucketArray := make([]*model.MetaBucket, numBuckets)
 	wg := sync.WaitGroup{}
 	for i, bucket := range output.Buckets {
+		log.Info("AMIT : I %d: bucket: %v", i, bucket)
 		wg.Add(1)
 		// go GetBucketMeta(i, bucket, sess, bucketArray, &wg)
 	}
@@ -50,22 +68,30 @@ func BucketList(sess *session.Session) ([]*model.MetaBucket, error) {
 }
 
 func (ad *GcpAdapter) SyncMetadata(ctx context.Context, in *pb.SyncMetadataRequest) error {
-	buckArr, err := BucketList(ad.Session)
+	buckArr, err := ad.BucketList(ad.Session)
+	log.Info("AMIT : metadata collection for backend id: %v", ad.Backend.Id)
 	if err != nil {
 		log.Errorf("metadata collection for backend id: %v failed with error: %v", ad.Backend.Id, err)
 		return err
 	}
 
 	metaBackend := model.MetaBackend{}
-	metaBackend.Id = bson.ObjectId(ad.Backend.Id)
+	metaBackend.Id = ad.Backend.Id
 	metaBackend.BackendName = ad.Backend.Name
 	metaBackend.Type = ad.Backend.Type
 	metaBackend.Region = ad.Backend.Region
 	metaBackend.Buckets = buckArr
+	metaBackend.NumberOfBuckets = int32(len(buckArr))
 	newContext := context.TODO()
 	err = db.DbAdapter.CreateMetadata(newContext, metaBackend)
 
+	
+
 	return err
+}
+
+func BucketList(client *s3client.Client) {
+	panic("unimplemented")
 }
 func (ad *GcpAdapter) DownloadObject() {
 	log.Info("Implement me (gcp) driver")

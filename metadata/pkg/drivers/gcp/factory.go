@@ -32,7 +32,7 @@ func (cdf *GcpDriverFactory) CreateDriver(backend *backendpb.BackendDetail) (dri
 	AccessKeyID := backend.Access
 	AccessKeySecret := backend.Security
 	sess := s3client.NewClient(endpoint, AccessKeyID, AccessKeySecret)
-	adap := &GcpAdapter{backend: backend, session: sess}
+	adap := &GcpAdapter{Backend: backend, Session: sess}
 
 	return adap, nil
 }
