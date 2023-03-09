@@ -18,6 +18,7 @@ import (
 	"context"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -38,6 +39,46 @@ type GcpAdapter struct {
 	Session *s3client.Client
 }
 
+func (ad *GcpAdapter)GetHeadObject(sess *s3client.Client, bucketName *string, obj *model.MetaObject) {
+	Region := aws.String(ad.Backend.Region)
+	Endpoint := aws.String(ad.Backend.Endpoint)
+	Credentials := credentials.NewStaticCredentials(ad.Backend.Access, ad.Backend.Security, "")
+	configuration := &aws.Config{
+		Region:      Region,
+		Endpoint:    Endpoint,
+		Credentials: Credentials,
+	}
+
+	svc := awss3.New(session.New(configuration))
+	meta, err := svc.HeadObject(&s3.HeadObjectInput{Bucket: bucketName, Key: &obj.ObjectName})
+	if err != nil {
+		log.Errorf("cannot perform head object on object %v in bucket %v. failed with error: %v", obj.ObjectName, *bucketName, err)
+		return
+	}
+	if meta.ServerSideEncryption != nil {
+		obj.ServerSideEncryption = *meta.ServerSideEncryption
+	}
+	obj.ObjectType = *meta.ContentType
+	if meta.Expires != nil {
+		expiresTime, err := time.Parse(time.RFC3339, *meta.Expires)
+		if err != nil {
+			log.Errorf("unable to parse given string to time type. error: %v. skipping ExpiresDate field", err)
+		} else {
+			obj.ExpiresDate = &expiresTime
+		}
+	}
+	if meta.ReplicationStatus != nil {
+		obj.ReplicationStatus = *meta.ReplicationStatus
+	}
+	if meta.WebsiteRedirectLocation != nil {
+		obj.RedirectLocation = *meta.WebsiteRedirectLocation
+	}
+	metadata := map[string]string{}
+	for key, val := range meta.Metadata {
+		metadata[key] = *val
+	}
+	obj.Metadata = metadata
+}
 
 func (ad *GcpAdapter)ObjectList(sess *s3client.Client, bucket *model.MetaBucket) error {
 	Region := aws.String(ad.Backend.Region)
