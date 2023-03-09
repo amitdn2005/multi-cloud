@@ -165,21 +165,26 @@ func (ad *GcpAdapter)GetBucketMeta(buckIdx int, bucket *s3.Bucket, sess *s3clien
 		log.Errorf("unable to get bucket location. failed with error: %v", err)
 		return
 	}
+	log.Info("Amit: GCP in GetBucketMeta ===========")
+	log.Info("Amit: GCP *loc.LocationConstraint %s ad.Backend.Region %s", *loc.LocationConstraint, ad.Backend.Region)
 
-	if *loc.LocationConstraint != ad.Backend.Region {
-		return
-	}
-
+	// if *loc.LocationConstraint != ad.Backend.Region {
+	// 	return
+	// }
+	log.Info("Amit: GCP in GetBucketMeta before ObjectList Call===========")
 	buck := &model.MetaBucket{}
 	buck.Name = *bucket.Name
 	buck.CreationDate = bucket.CreationDate
 	buck.Region = *loc.LocationConstraint
+
 
 	err = ad.ObjectList(sess, buck)
 	if err != nil {
 		return
 	}
 
+	log.Info("Amit: GCP in GetBucketMeta After ObjectList Call===========")
+	log.Info(buck)
 	bucketArray[buckIdx] = buck
 
 	tags, err := svc.GetBucketTagging(&s3.GetBucketTaggingInput{Bucket: bucket.Name})
@@ -268,9 +273,6 @@ func (ad *GcpAdapter) SyncMetadata(ctx context.Context, in *pb.SyncMetadataReque
 	return err
 }
 
-func BucketList(client *s3client.Client) {
-	panic("unimplemented")
-}
 func (ad *GcpAdapter) DownloadObject() {
 	log.Info("Implement me (gcp) driver")
 }
