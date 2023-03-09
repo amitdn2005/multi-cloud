@@ -101,6 +101,8 @@ func (ad *GcpAdapter)ObjectList(sess *s3client.Client, bucket *model.MetaBucket)
 	var totSize int64
 	objectArray := make([]*model.MetaObject, numObjects)
 	for objIdx, object := range output.Contents {
+		log.Info("AMIT : Object %d for bucket %s", objIdx, bucket.Name)
+		log.Info(object)
 		obj := &model.MetaObject{}
 		objectArray[objIdx] = obj
 		obj.LastModifiedDate = object.LastModified
@@ -134,8 +136,10 @@ func (ad *GcpAdapter)ObjectList(sess *s3client.Client, bucket *model.MetaBucket)
 			}
 			obj.ObjectAcl = access
 		}
+		log.Info(object)
+		log.Info("**********************")
 
-		//ad.GetHeadObject(sess, &bucket.Name, obj)
+		ad.GetHeadObject(sess, &bucket.Name, obj)
 	}
 	bucket.NumberOfObjects = numObjects
 	bucket.TotalSize = totSize
